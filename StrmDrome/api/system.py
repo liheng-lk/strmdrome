@@ -31,7 +31,12 @@ def get_license(request: Request):
 @router.api_route("/rest/getMusicFolders.view", methods=_METHODS)
 def get_music_folders(request: Request):
     user, e = require_user(request)
-    return e or ok({"musicFolders": {"musicFolder": [{"id": 1, "name": "Music"}]}})
+    if e: return e
+    from db.database import get_connection
+    conn = get_connection()
+    folders = conn.execute("SELECT id, name FROM folders").fetchall()
+    conn.close()
+    return ok({"musicFolders": {"musicFolder": [{"id": f["id"], "name": f["name"]} for f in folders]}})
 
 
 @router.api_route("/rest/getScanStatus", methods=_METHODS)
@@ -49,11 +54,12 @@ def get_scan_status_endpoint(request: Request):
 
 @router.api_route("/rest/startScan", methods=_METHODS)
 @router.api_route("/rest/startScan.view", methods=_METHODS)
-def start_scan(request: Request):
+def start_scan(request: Request, folderId: int = None):
     user, e = require_user(request)
     if e: return e
+    if not user["is_admin"]: return err(50, "Requires Admin role")
     st = get_scan_status()
     if not st["scanning"]:
-        t = threading.Thread(target=scan_library, daemon=True)
+        t = threading.Thread(target=scan_library, args=(folderId,), daemon=True)
         t.start()
     return ok({"scanStatus": {"scanning": True, "count": st["count"]}})

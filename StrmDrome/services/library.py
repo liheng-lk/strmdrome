@@ -54,13 +54,18 @@ def update_artist_album_count(artist_id: str):
 
 # ── Album ────────────────────────────────────────────────────────────────────
 
-def upsert_album(artist_id: str, artist_name: str, album_name: str, year: int = 0, genre: str = "") -> str:
+def upsert_album(artist_id: str, artist_name: str, album_name: str, year: int = 0, genre: str = "", folder_id: int = None) -> str:
     alid = _album_id(artist_name, album_name)
     conn = get_connection()
     conn.execute("""
-        INSERT OR IGNORE INTO albums (id, artist_id, title, sort_title, year, genre)
-        VALUES (?,?,?,?,?,?)
-    """, (alid, artist_id, album_name, album_name, year, genre))
+        INSERT OR IGNORE INTO albums (id, artist_id, title, sort_title, year, genre, folder_id)
+        VALUES (?,?,?,?,?,?,?)
+    """, (alid, artist_id, album_name, album_name, year, genre, folder_id))
+    
+    # Update folder_id if it was NULL but now known
+    if folder_id:
+        conn.execute("UPDATE albums SET folder_id=? WHERE id=? AND folder_id IS NULL", (folder_id, alid))
+        
     conn.commit(); conn.close()
     return alid
 
@@ -94,15 +99,19 @@ def update_album_stats(album_id: str):
 # ── Song ─────────────────────────────────────────────────────────────────────
 
 def upsert_song(path: str, album_id: str, artist_id: str, title: str,
-                track_num: int = 0, disc_num: int = 1) -> str:
+                track_num: int = 0, disc_num: int = 1, folder_id: int = None) -> str:
     sid  = _song_id(path)
     now  = datetime.now(timezone.utc).isoformat()
     conn = get_connection()
     conn.execute("""
         INSERT OR IGNORE INTO songs
-            (id, album_id, artist_id, title, sort_title, track_num, disc_num, path, updated_at)
-        VALUES (?,?,?,?,?,?,?,?,?)
-    """, (sid, album_id, artist_id, title, title, track_num, disc_num, path, now))
+            (id, album_id, artist_id, title, sort_title, track_num, disc_num, path, updated_at, folder_id)
+        VALUES (?,?,?,?,?,?,?,?,?,?)
+    """, (sid, album_id, artist_id, title, title, track_num, disc_num, path, now, folder_id))
+    
+    if folder_id:
+        conn.execute("UPDATE songs SET folder_id=? WHERE id=? AND folder_id IS NULL", (folder_id, sid))
+        
     conn.commit(); conn.close()
     return sid
 
@@ -164,52 +173,61 @@ def list_genres():
 # ── Album lists ──────────────────────────────────────────────────────────────
 
 def get_album_list(list_type: str, size=10, offset=0, from_year=None, to_year=None,
-                   genre=None, user_id=None):
+                   genre=None, user_id=None, music_folder_id=None):
     conn = get_connection()
+    
+    folder_filter = " AND folder_id=? " if music_folder_id else ""
+    folder_params = (music_folder_id,) if music_folder_id else ()
+    
     if list_type == "random":
         rows = conn.execute(
-            "SELECT * FROM albums ORDER BY RANDOM() LIMIT ? OFFSET ?", (size, offset)
+            f"SELECT * FROM albums WHERE 1=1 {folder_filter} ORDER BY RANDOM() LIMIT ? OFFSET ?", 
+            (*folder_params, size, offset)
         ).fetchall()
     elif list_type == "newest":
         rows = conn.execute(
-            "SELECT * FROM albums ORDER BY rowid DESC LIMIT ? OFFSET ?", (size, offset)
+            f"SELECT * FROM albums WHERE 1=1 {folder_filter} ORDER BY rowid DESC LIMIT ? OFFSET ?", 
+            (*folder_params, size, offset)
         ).fetchall()
     elif list_type == "recent":
         # Albums with recently played songs via scrobble_log
-        rows = conn.execute("""
+        rows = conn.execute(f"""
             SELECT DISTINCT a.* FROM albums a
             JOIN songs s ON s.album_id=a.id
             JOIN scrobble_log sl ON sl.song_id=s.id AND sl.user_id=?
+            WHERE 1=1 {folder_filter.replace('folder_id', 'a.folder_id')}
             ORDER BY sl.played_at DESC LIMIT ? OFFSET ?
-        """, (user_id, size, offset)).fetchall()
+        """, (user_id, *folder_params, size, offset)).fetchall()
     elif list_type == "frequent":
-        rows = conn.execute("""
+        rows = conn.execute(f"""
             SELECT a.*, COUNT(sl.id) AS play_count FROM albums a
             JOIN songs s ON s.album_id=a.id
             JOIN scrobble_log sl ON sl.song_id=s.id AND sl.user_id=?
+            WHERE 1=1 {folder_filter.replace('folder_id', 'a.folder_id')}
             GROUP BY a.id ORDER BY play_count DESC LIMIT ? OFFSET ?
-        """, (user_id, size, offset)).fetchall()
+        """, (user_id, *folder_params, size, offset)).fetchall()
     elif list_type == "starred":
-        rows = conn.execute("""
+        rows = conn.execute(f"""
             SELECT a.* FROM albums a
             JOIN annotations ann ON ann.item_id=a.id AND ann.item_type='album'
                 AND ann.user_id=? AND ann.starred=1
+            WHERE 1=1 {folder_filter.replace('folder_id', 'a.folder_id')}
             ORDER BY ann.starred_at DESC LIMIT ? OFFSET ?
-        """, (user_id, size, offset)).fetchall()
+        """, (user_id, *folder_params, size, offset)).fetchall()
     elif list_type == "byYear" and from_year is not None:
         rows = conn.execute(
-            "SELECT * FROM albums WHERE year BETWEEN ? AND ? ORDER BY year LIMIT ? OFFSET ?",
-            (from_year, to_year or 9999, size, offset)
+            f"SELECT * FROM albums WHERE year BETWEEN ? AND ? {folder_filter} ORDER BY year LIMIT ? OFFSET ?",
+            (from_year, to_year or 9999, *folder_params, size, offset)
         ).fetchall()
     elif list_type == "byGenre" and genre:
         rows = conn.execute(
-            "SELECT * FROM albums WHERE genre=? ORDER BY title LIMIT ? OFFSET ?",
-            (genre, size, offset)
+            f"SELECT * FROM albums WHERE genre=? {folder_filter} ORDER BY title LIMIT ? OFFSET ?",
+            (genre, *folder_params, size, offset)
         ).fetchall()
     else:  # alphabeticalByName / alphabeticalByArtist
         rows = conn.execute(
-            "SELECT * FROM albums ORDER BY title COLLATE NOCASE LIMIT ? OFFSET ?",
-            (size, offset)
+            f"SELECT * FROM albums WHERE 1=1 {folder_filter} ORDER BY title COLLATE NOCASE LIMIT ? OFFSET ?",
+            (*folder_params, size, offset)
         ).fetchall()
     conn.close(); return rows
 

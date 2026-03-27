@@ -13,7 +13,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 # Import sub-routers
-from api import system, browsing, search, albumlist, playlists, annotation, media, user_mgmt
+from api import system, browsing, search, albumlist, playlists, annotation, media, user_mgmt, admin
 
 router = APIRouter()
 
@@ -46,3 +46,4 @@ router.include_router(playlists.router)
 router.include_router(annotation.router)
 router.include_router(media.router)
 router.include_router(user_mgmt.router)
+router.include_router(admin.router)

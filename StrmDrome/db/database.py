@@ -40,6 +40,20 @@ def init_db():
         )
     """)
 
+    # ── Folders (Media Libraries) ────────────────────────────────────────────
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS folders (
+            id           INTEGER PRIMARY KEY AUTOINCREMENT,
+            name         TEXT NOT NULL,
+            path         TEXT NOT NULL UNIQUE,
+            last_scan    TEXT
+        )
+    """)
+
+    # Default folder backfill
+    if not c.execute("SELECT 1 FROM folders LIMIT 1").fetchone():
+        c.execute("INSERT INTO folders (name, path) VALUES (?, ?)", ("Default Music", config.MUSIC_DIR))
+
     # ── Artists ──────────────────────────────────────────────────────────────
     c.execute("""
         CREATE TABLE IF NOT EXISTS artists (
@@ -157,5 +171,17 @@ def init_db():
         c.execute(sql)
 
     conn.commit()
+
+    # Schema upgrades for existing v2.0 databases -> v2.2 (Multi-Library)
+    _add_column_if_not_exists(conn, "albums", "folder_id", "INTEGER")
+    _add_column_if_not_exists(conn, "songs", "folder_id", "INTEGER")
+    
+    conn.commit()
     conn.close()
     logger.info("Database initialized.")
+
+
+def _add_column_if_not_exists(conn, table: str, column: str, type_def: str):
+    columns = [col["name"] for col in conn.execute(f"PRAGMA table_info({table})").fetchall()]
+    if column not in columns:
+        conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {type_def}")

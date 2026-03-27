@@ -11,9 +11,15 @@ createApp({
         const loginError = ref("");
         const auth = reactive({ username: "", password: "", salt: "", token: "" });
         
-        const currentView = ref("home"); // home, artists, albums, album_detail
+        const currentView = ref("home"); // home, artists, albums, album_detail, settings
         const isLoading = ref(false);
         const isScanning = ref(false);
+        const isAdmin = ref(false);
+
+        // Multi-Library State
+        const libraries = ref([]);           // admin management list
+        const activeLibraries = ref([]);     // dropdown list
+        const selectedLibrary = ref("");     // "" means all
 
         // Data
         const randomAlbums = ref([]);
@@ -73,10 +79,16 @@ createApp({
             isLoggingIn.value = true;
             loginError.value = "";
             try {
+                // Fetch User info to check if admin
+                const resUser = await apiCall("getUser", `username=${auth.username}`);
+                isAdmin.value = resUser?.user?.adminRole === true;
+                
                 await apiCall("ping");
                 isLoggedIn.value = true;
                 localStorage.setItem("sd_user", auth.username);
                 localStorage.setItem("sd_pass", auth.password);
+                
+                await fetchActiveLibraries();
                 loadInitialData();
             } catch (err) {
                 loginError.value = err.message || "Invalid credentials.";
@@ -94,12 +106,30 @@ createApp({
         }
 
         // --- Data Fetching ---
+        function getLibFilter() {
+            return selectedLibrary.value ? `musicFolderId=${selectedLibrary.value}` : "";
+        }
+        
+        async function fetchActiveLibraries() {
+            try {
+                const res = await apiCall("getMusicFolders");
+                activeLibraries.value = res.musicFolders?.musicFolder || [];
+            } catch(e) {}
+        }
+
+        watch(selectedLibrary, () => {
+            if (currentView.value === 'home') loadInitialData();
+            else if (currentView.value === 'artists') fetchArtists();
+            else if (currentView.value === 'albums') fetchAlbums();
+        });
+
         async function loadInitialData() {
             isLoading.value = true;
             try {
+                const filt = getLibFilter();
                 const [randomRes, recentRes, plRes] = await Promise.all([
-                    apiCall("getAlbumList2", "type=random&size=12"),
-                    apiCall("getAlbumList2", "type=newest&size=12"),
+                    apiCall("getAlbumList2", `type=random&size=12&${filt}`),
+                    apiCall("getAlbumList2", `type=newest&size=12&${filt}`),
                     apiCall("getPlaylists")
                 ]);
                 randomAlbums.value = randomRes.albumList2?.album || [];
@@ -112,7 +142,7 @@ createApp({
         async function fetchArtists() {
             isLoading.value = true;
             try {
-                const res = await apiCall("getArtists");
+                const res = await apiCall("getArtists", getLibFilter());
                 artistsIndex.value = res.artists?.index || [];
             } catch (e) {}
             isLoading.value = false;
@@ -132,13 +162,46 @@ createApp({
             isLoading.value = false;
         }
 
-        async function startScan() {
+        // --- Library Admin ---
+        const newFolderName = ref("");
+        const newFolderPath = ref("");
+        
+        async function fetchAdminFolders() {
+            isLoading.value = true;
+            try {
+                const res = await apiCall("strmdrome/getFolders");
+                libraries.value = res.folders || [];
+            } catch(e) {}
+            isLoading.value = false;
+        }
+
+        async function addFolder() {
+            if(!newFolderName.value || !newFolderPath.value) return;
+            try {
+                await apiCall("strmdrome/addFolder", `name=${encodeURIComponent(newFolderName.value)}&path=${encodeURIComponent(newFolderPath.value)}`);
+                newFolderName.value = ""; newFolderPath.value = "";
+                await fetchAdminFolders();
+                await fetchActiveLibraries();
+            } catch (e) { alert("Failed to add library: " + e.message); }
+        }
+
+        async function deleteFolder(id) {
+            if(!confirm("Are you sure you want to remove this library? (Media content will not be deleted)")) return;
+            try {
+                await apiCall("strmdrome/deleteFolder", `id=${id}`);
+                await fetchAdminFolders();
+                await fetchActiveLibraries();
+                if(selectedLibrary.value == id) selectedLibrary.value = "";
+            } catch (e) { alert("Failed to delete library"); }
+        }
+
+        async function startScan(folderId = null) {
             isScanning.value = true;
             try {
-                await apiCall("startScan");
-                // Poll occasionally or just finish
-                setTimeout(() => isScanning.value = false, 3000);
-            } catch(e) { isScanning.value = false; }
+                const p = folderId ? `folderId=${folderId}` : "";
+                await apiCall("startScan", p);
+                setTimeout(() => { isScanning.value = false; alert("Scan started in background."); }, 1000);
+            } catch(e) { isScanning.value = false; alert(e.message); }
         }
 
         // --- Playback Logic ---
@@ -258,10 +321,14 @@ createApp({
         });
 
         return {
-            isLoggedIn, isLoggingIn, loginError, auth, login, logout,
+            isLoggedIn, isLoggingIn, loginError, auth, login, logout, isAdmin,
             currentView, isLoading, isScanning, artistsIndex,
             randomAlbums, recentAlbums, playlists, currentAlbum,
+            activeLibraries, selectedLibrary, libraries, newFolderName, newFolderPath,
             getCoverUrl, formatTime, formatDuration, startScan,
+            
+            // Library Admin
+            fetchAdminFolders, addFolder, deleteFolder,
             
             // Navigation
             fetchArtists, fetchAlbums, openAlbum,
