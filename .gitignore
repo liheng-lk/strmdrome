@@ -1,0 +1,24 @@
+# Python cache
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# StrmDrome runtime data (not part of source code)
+StrmDrome/data/
+data/
+
+# dotenv
+.env
+
+# macOS
+.DS_Store

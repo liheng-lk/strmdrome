@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  strmdrome:
+    build: .
+    container_name: strmdrome
+    restart: unless-stopped
+    ports:
+      - "4533:4533"
+    volumes:
+      # !! EDIT THIS: point to your actual .strm music directory (read-only) !!
+      - /path/to/your/music:/music:ro
+      # Writable volume for DB, covers, catalog, lyrics cache
+      - ./data:/data
+    environment:
+      # ── Required ─────────────────────────────────────────────────────────
+      MUSIC_DIR:          /music
+      DATA_DIR:           /data
+      # ── Admin account (change these!) ─────────────────────────────────────
+      ADMIN_USER:         admin
+      ADMIN_PASS:         changeme
+      # ── Scraping (optional) ───────────────────────────────────────────────
+      NETEASE_ENABLED:    "true"
+      LASTFM_API_KEY:     ""           # Fill in for artist bios
+      # ── Scanner schedule ─────────────────────────────────────────────────
+      SCAN_ON_STARTUP:    "true"
+      SCAN_INTERVAL_HOURS: "24"
+      SCRAPE_CONCURRENCY: "4"          # Parallel scraping goroutines
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4533/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
