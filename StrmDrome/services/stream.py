@@ -11,15 +11,26 @@ import httpx
 logger = logging.getLogger(__name__)
 
 
-async def resolve_strm_url(strm_path: str) -> str | None:
+async def resolve_strm_url(strm_path: str, folder_id: int = None) -> str | None:
     """
-    Read a .strm file and return the playback URL.
-    Handles:
-      - Plain HTTP/HTTPS URL (most common)
-      - URL pointing to an M3U/M3U8 playlist (extract first media URL)
+    Return the 302 playback URL.
+    1. If AList backend: request the dynamic signed URL directly from AList.
+    2. If Local backend: Read the .strm file and return the plain HTTP/HTTPS URL or M3U8 payload.
     """
+    if folder_id:
+        from db.database import get_connection
+        conn = get_connection()
+        folder = conn.execute("SELECT * FROM folders WHERE id=?", (folder_id,)).fetchone()
+        conn.close()
+        
+        if folder and folder.get("alist_url"):
+            from services.alist import AListClient
+            client = AListClient(folder_id, folder["alist_url"], folder.get("alist_username"), folder.get("alist_password"), folder.get("alist_token"))
+            url = client.get_stream_url(strm_path)
+            if url: return url
+            
     if not strm_path or not os.path.exists(strm_path):
-        logger.warning(f"STRM file not found: {strm_path}")
+        logger.warning(f"Media file not found locally: {strm_path}")
         return None
 
     try:

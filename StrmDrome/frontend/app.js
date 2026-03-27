@@ -165,6 +165,9 @@ createApp({
         // --- Library Admin ---
         const newFolderName = ref("");
         const newFolderPath = ref("");
+        const newAlistUrl = ref("");
+        const newAlistUsername = ref("");
+        const newAlistPassword = ref("");
         
         async function fetchAdminFolders() {
             isLoading.value = true;
@@ -178,8 +181,15 @@ createApp({
         async function addFolder() {
             if(!newFolderName.value || !newFolderPath.value) return;
             try {
-                await apiCall("strmdrome/addFolder", `name=${encodeURIComponent(newFolderName.value)}&path=${encodeURIComponent(newFolderPath.value)}`);
+                let params = `name=${encodeURIComponent(newFolderName.value)}&path=${encodeURIComponent(newFolderPath.value)}`;
+                if (newAlistUrl.value) {
+                    params += `&alist_url=${encodeURIComponent(newAlistUrl.value)}`;
+                    params += `&alist_username=${encodeURIComponent(newAlistUsername.value)}`;
+                    params += `&alist_password=${encodeURIComponent(newAlistPassword.value)}`;
+                }
+                await apiCall("strmdrome/addFolder", params);
                 newFolderName.value = ""; newFolderPath.value = "";
+                newAlistUrl.value = ""; newAlistUsername.value = ""; newAlistPassword.value = "";
                 await fetchAdminFolders();
                 await fetchActiveLibraries();
             } catch (e) { alert("Failed to add library: " + e.message); }
@@ -325,6 +335,7 @@ createApp({
             currentView, isLoading, isScanning, artistsIndex,
             randomAlbums, recentAlbums, playlists, currentAlbum,
             activeLibraries, selectedLibrary, libraries, newFolderName, newFolderPath,
+            newAlistUrl, newAlistUsername, newAlistPassword,
             getCoverUrl, formatTime, formatDuration, startScan,
             
             // Library Admin

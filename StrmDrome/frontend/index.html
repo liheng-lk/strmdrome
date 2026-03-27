@@ -298,16 +298,38 @@
 
                         <form @submit.prevent="addFolder" class="bg-black/30 p-5 rounded-xl border border-white/5">
                             <h4 class="font-medium mb-4">Add Media Library</h4>
+                            
+                            <div class="mb-4 text-xs text-gray-400 bg-strm/10 p-3 rounded-lg border border-strm/20">
+                                <b>Local Mode:</b> Fill Name & Path. <br/>
+                                <b>Native OpenList/AList Mode:</b> Fill Server URL, Username, Password. The Path becomes the remote Aliyun/Quark drive directory (e.g. <code>/AliyunDrive/Music</code>).
+                            </div>
+
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                                 <div>
-                                    <label class="block text-xs font-medium text-gray-400 mb-1">Display Name</label>
+                                    <label class="block text-xs font-medium text-gray-400 mb-1">Display Name *</label>
                                     <input v-model="newFolderName" type="text" required class="w-full bg-black/50 border border-white/10 rounded-lg py-2 px-3 text-sm focus:ring-1 focus:ring-strm outline-none" placeholder="e.g. Pop Music">
                                 </div>
                                 <div>
-                                    <label class="block text-xs font-medium text-gray-400 mb-1">Server Path</label>
-                                    <input v-model="newFolderPath" type="text" required class="w-full bg-black/50 border border-white/10 rounded-lg py-2 px-3 text-sm focus:ring-1 focus:ring-strm outline-none" placeholder="e.g. /music/Pop">
+                                    <label class="block text-xs font-medium text-gray-400 mb-1">Server or Cloud Path *</label>
+                                    <input v-model="newFolderPath" type="text" required class="w-full bg-black/50 border border-white/10 rounded-lg py-2 px-3 text-sm focus:ring-1 focus:ring-strm outline-none" placeholder="e.g. /music/Pop or /AliyunDrive/Pop">
                                 </div>
                             </div>
+                            
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-400 mb-1">OpenList/AList URL (Optional)</label>
+                                    <input v-model="newAlistUrl" type="url" class="w-full bg-black/50 border border-white/10 rounded-lg py-2 px-3 text-sm focus:ring-1 focus:ring-strm outline-none" placeholder="http://192.168.x.x:5244">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-400 mb-1">AList Username</label>
+                                    <input v-model="newAlistUsername" type="text" class="w-full bg-black/50 border border-white/10 rounded-lg py-2 px-3 text-sm focus:ring-1 focus:ring-strm outline-none" placeholder="admin">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-400 mb-1">AList Password</label>
+                                    <input v-model="newAlistPassword" type="password" class="w-full bg-black/50 border border-white/10 rounded-lg py-2 px-3 text-sm focus:ring-1 focus:ring-strm outline-none" placeholder="••••••••">
+                                </div>
+                            </div>
+
                             <button type="submit" class="bg-white/10 hover:bg-white/20 text-white font-medium py-2 px-6 rounded-lg text-sm transition-colors w-full">
                                 Add Library
                             </button>

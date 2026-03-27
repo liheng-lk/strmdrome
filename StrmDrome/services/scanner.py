@@ -42,10 +42,23 @@ async def scan_library_async(target_folder_id: Optional[int] = None):
     
     logger.info(f"Starting library scan across {len(folders)} folders.")
 
-    # Collect all .strm files first
-    strm_files = [] # (path, folder_path, folder_id)
+    # Collect all metadata items first
+    strm_files = [] # (strm_path OR alist_path, folder_path, folder_id, is_alist)
+    
     for folder in folders:
         fid, fpath = folder["id"], folder["path"]
+        
+        # AList integration
+        if folder.get("alist_url"):
+            from services.alist import AListClient
+            client = AListClient(fid, folder["alist_url"], folder.get("alist_username"), folder.get("alist_password"), folder.get("alist_token"))
+            logger.info(f"Scanning AList remote directory: {fpath}")
+            
+            for alist_filepath in client.walk(fpath):
+                strm_files.append((alist_filepath, fpath, fid, True))
+            continue
+            
+        # Traditional local file scanning
         if not os.path.isdir(fpath):
             continue
             
@@ -53,17 +66,17 @@ async def scan_library_async(target_folder_id: Optional[int] = None):
             dirs.sort()
             for fn in sorted(files):
                 if fn.lower().endswith(".strm"):
-                    strm_files.append((os.path.join(root, fn), fpath, fid))
+                    strm_files.append((os.path.join(root, fn), fpath, fid, False))
 
-    logger.info(f"Found {len(strm_files)} .strm files.")
+    logger.info(f"Found {len(strm_files)} media files.")
 
     # Process in semaphore-controlled async batches for the scraper
     sem = asyncio.Semaphore(config.SCRAPE_CONCURRENCY)
 
     async def process_one(strm_info):
-        strm_path, fpath, fid = strm_info
+        media_path, fpath, fid, is_alist = strm_info
         async with sem:
-            parsed = parse_strm_path(strm_path, fpath)
+            parsed = parse_strm_path(media_path, fpath)
 
             artist_name = parsed.artist or "Unknown Artist"
             album_name  = parsed.album  or "Unknown Album"
@@ -71,7 +84,7 @@ async def scan_library_async(target_folder_id: Optional[int] = None):
             aid  = lib.upsert_artist(artist_name)
             alid = lib.upsert_album(aid, artist_name, album_name, parsed.year, folder_id=fid)
             sid  = lib.upsert_song(
-                path       = strm_path,
+                path       = media_path,
                 album_id   = alid,
                 artist_id  = aid,
                 title      = parsed.title,
@@ -80,13 +93,15 @@ async def scan_library_async(target_folder_id: Optional[int] = None):
                 folder_id  = fid
             )
 
-            # Run scrape only if never scraped before
+            # Run external scraper (NetEase/LastFM) only if never scraped before
             from db.database import get_connection
             row = get_connection().execute(
                 "SELECT last_scraped FROM songs WHERE id=?", (sid,)
             ).fetchone()
             if not row or not row["last_scraped"]:
-                await scrape_song(strm_path, parsed, aid, alid, sid)
+                # If it's pure AList, the local path check in scrape_song (.nfo / .lrc) will safely skip
+                # NetEase/MusicBrainz web APIs will still fetch the album covers!
+                await scrape_song(media_path if not is_alist else fpath, parsed, aid, alid, sid)
 
             _scan_status["count"] += 1
 

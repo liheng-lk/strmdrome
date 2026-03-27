@@ -45,7 +45,11 @@ def init_db():
         CREATE TABLE IF NOT EXISTS folders (
             id           INTEGER PRIMARY KEY AUTOINCREMENT,
             name         TEXT NOT NULL,
-            path         TEXT NOT NULL UNIQUE,
+            path         TEXT NOT NULL,
+            alist_url    TEXT,
+            alist_username TEXT,
+            alist_password TEXT,
+            alist_token    TEXT,
             last_scan    TEXT
         )
     """)
@@ -175,6 +179,12 @@ def init_db():
     # Schema upgrades for existing v2.0 databases -> v2.2 (Multi-Library)
     _add_column_if_not_exists(conn, "albums", "folder_id", "INTEGER")
     _add_column_if_not_exists(conn, "songs", "folder_id", "INTEGER")
+    
+    # Schema upgrades for v2.3 (AList Integration)
+    _add_column_if_not_exists(conn, "folders", "alist_url", "TEXT")
+    _add_column_if_not_exists(conn, "folders", "alist_username", "TEXT")
+    _add_column_if_not_exists(conn, "folders", "alist_password", "TEXT")
+    _add_column_if_not_exists(conn, "folders", "alist_token", "TEXT")
     
     conn.commit()
     conn.close()

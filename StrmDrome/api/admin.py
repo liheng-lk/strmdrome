@@ -18,13 +18,16 @@ def sd_get_folders(request: Request):
 
 @router.api_route("/rest/strmdrome/addFolder", methods=_METHODS)
 @router.api_route("/rest/strmdrome/addFolder.view", methods=_METHODS)
-def sd_add_folder(request: Request, name: str, path: str):
+def sd_add_folder(request: Request, name: str, path: str, alist_url: str = "", alist_username: str = "", alist_password: str = ""):
     user, e = require_user(request)
     if e: return e
     if not user["is_admin"]: return err(50, "Requires Admin role")
     conn = get_connection()
     try:
-        conn.execute("INSERT INTO folders (name, path) VALUES (?, ?)", (name, path))
+        conn.execute(
+            "INSERT INTO folders (name, path, alist_url, alist_username, alist_password) VALUES (?, ?, ?, ?, ?)", 
+            (name, path, alist_url or None, alist_username or None, alist_password or None)
+        )
         conn.commit()
     except Exception as ex:
         conn.close()

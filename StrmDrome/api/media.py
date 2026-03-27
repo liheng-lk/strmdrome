@@ -22,7 +22,7 @@ async def stream(request: Request, id: str = ""):
     if e: return e
     row = lib.get_song(id)
     if not row: return err(70, "Song not found")
-    url = await resolve_strm_url(row["path"])
+    url = await resolve_strm_url(row["path"], row.get("folder_id"))
     if not url:
         return err(70, "Could not resolve stream URL")
     # Record play in background
