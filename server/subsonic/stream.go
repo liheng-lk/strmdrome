@@ -2,6 +2,7 @@ package subsonic
 
 import (
 	"fmt"
+	"os"
 	"net/http"
 	"strconv"
 	"strings"
@@ -28,6 +29,17 @@ func (api *Router) Stream(w http.ResponseWriter, r *http.Request) (*responses.Su
 	mf, err := api.ds.MediaFile(ctx).Get(id)
 	if err != nil {
 		return nil, err
+	}
+
+	if strings.HasSuffix(strings.ToLower(mf.Path), ".strm") {
+		content, err := os.ReadFile(mf.AbsolutePath())
+		if err == nil {
+			urlStr := strings.TrimSpace(string(content))
+			if strings.HasPrefix(urlStr, "http") {
+				http.Redirect(w, r, urlStr, http.StatusFound)
+				return nil, nil
+			}
+		}
 	}
 
 	streamReq := api.transcodeDecision.ResolveRequest(ctx, mf, format, maxBitRate, timeOffset)
@@ -99,6 +111,17 @@ func (api *Router) Download(w http.ResponseWriter, r *http.Request) (*responses.
 
 	switch v := entity.(type) {
 	case *model.MediaFile:
+		if strings.HasSuffix(strings.ToLower(v.Path), ".strm") {
+			content, err := os.ReadFile(v.AbsolutePath())
+			if err == nil {
+				urlStr := strings.TrimSpace(string(content))
+				if strings.HasPrefix(urlStr, "http") {
+					http.Redirect(w, r, urlStr, http.StatusFound)
+					return nil, nil
+				}
+			}
+		}
+
 		streamReq := api.transcodeDecision.ResolveRequest(ctx, v, format, maxBitRate, 0)
 		stream, err := api.streamer.NewStream(ctx, v, streamReq)
 		if err != nil {

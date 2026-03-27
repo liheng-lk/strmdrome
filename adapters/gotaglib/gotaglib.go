@@ -16,6 +16,8 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"bytes"
+	"net/http"
 	"runtime/debug"
 	"strings"
 	"time"
@@ -125,6 +127,29 @@ func (e extractor) extractMetadata(filePath string) (info *metadata.Info, err er
 // openFile opens the file at filePath using the extractor's filesystem.
 // It returns a TagLib File handle and a cleanup function to close resources.
 func (e extractor) openFile(filePath string) (f *taglib.File, closeFunc func(), err error) {
+	if strings.HasSuffix(strings.ToLower(filePath), ".strm") {
+		content, _ := fs.ReadFile(e.fs, filePath)
+		urlStr := strings.TrimSpace(string(content))
+		if strings.HasPrefix(urlStr, "http") {
+			req, _ := http.NewRequest("GET", urlStr, nil)
+			req.Header.Set("Range", "bytes=0-131071")
+			resp, err2 := http.DefaultClient.Do(req)
+			if err2 == nil {
+				defer resp.Body.Close()
+				data, _ := io.ReadAll(resp.Body)
+				rs := bytes.NewReader(data)
+				f, err = taglib.OpenStream(rs,
+					taglib.WithReadStyle(taglib.ReadStyleFast),
+					taglib.WithFilename(filePath),
+				)
+				if err == nil {
+					return f, func() {}, nil
+				}
+			}
+		}
+		return nil, nil, errors.New("strm proxy failed to fetch ID3")
+	}
+
 	// Open the file from the filesystem
 	file, err := e.fs.Open(filePath)
 	if err != nil {

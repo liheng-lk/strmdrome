@@ -14,7 +14,10 @@ var excludeAudioType = []string{
 }
 
 func IsAudioFile(filePath string) bool {
-	extension := filepath.Ext(filePath)
+	extension := strings.ToLower(filepath.Ext(filePath))
+	if extension == ".strm" {
+		return true
+	}
 	mimeType := mime.TypeByExtension(extension)
 	return !slices.Contains(excludeAudioType, mimeType) && strings.HasPrefix(mimeType, "audio/")
 }

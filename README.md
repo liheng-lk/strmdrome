@@ -1,88 +1,88 @@
-<a href="https://www.navidrome.org"><img src="resources/logo-192x192.png" alt="Navidrome logo" title="navidrome" align="right" height="60px" /></a>
+# Cloud-Navidrome 🎵☁️
 
-# Navidrome Music Server &nbsp;[![Tweet](https://img.shields.io/twitter/url/http/shields.io.svg?style=social)](https://twitter.com/intent/tweet?text=Tired%20of%20paying%20for%20music%20subscriptions%2C%20and%20not%20finding%20what%20you%20really%20like%3F%20Roll%20your%20own%20streaming%20service%21&url=https://navidrome.org&via=navidrome)
+> **Navidrome 官方分支** — 原生支持 `.strm` 文件完整播放、云端元数据抓取、零带宽 302 重定向。
 
-[![Last Release](https://img.shields.io/github/v/release/navidrome/navidrome?logo=github&label=latest&style=flat-square)](https://github.com/navidrome/navidrome/releases)
-[![Build](https://img.shields.io/github/actions/workflow/status/navidrome/navidrome/pipeline.yml?branch=master&logo=github&style=flat-square)](https://nightly.link/navidrome/navidrome/workflows/pipeline/master)
-[![Downloads](https://img.shields.io/github/downloads/navidrome/navidrome/total?logo=github&style=flat-square)](https://github.com/navidrome/navidrome/releases/latest)
-[![Docker Pulls](https://img.shields.io/docker/pulls/deluan/navidrome?logo=docker&label=pulls&style=flat-square)](https://hub.docker.com/r/deluan/navidrome)
-[![Dev Chat](https://img.shields.io/discord/671335427726114836?logo=discord&label=discord&style=flat-square)](https://discord.gg/xh7j7yF)
-[![Subreddit](https://img.shields.io/reddit/subreddit-subscribers/navidrome?logo=reddit&label=/r/navidrome&style=flat-square)](https://www.reddit.com/r/navidrome/)
-[![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-v2.0-ff69b4.svg?style=flat-square)](CODE_OF_CONDUCT.md)
-[![Gurubase](https://img.shields.io/badge/Gurubase-Ask%20Navidrome%20Guru-006BFF?style=flat-square)](https://gurubase.io/g/navidrome)
+## 特性对比
 
-Navidrome is an open source web-based music collection server and streamer. It gives you freedom to listen to your
-music collection from any browser or mobile device. It's like your personal Spotify!
+| 功能 | 原版 Navidrome | Cloud-Navidrome |
+| :--- | :---: | :---: |
+| `.strm` 文件扫描 | ❌ 忽略 | ✅ 原生识别 |
+| 远端 ID3/FLAC 标签抓取 | ❌ 报错 | ✅ HTTP Range 远端萃取 |
+| 零带宽 302 直链播放 | ❌ 经服务器转发 | ✅ HTTP 302 直接重定向 |
+| Feishin / 音流 等客户端 | ✅ | ✅ |
+| 多语言 WebUI | ✅ | ✅ |
+| MusicBrainz / LastFM | ✅ | ✅ |
 
+## 快速部署（Docker）
 
-**Note**: The `master` branch may be in an unstable or even broken state during development. 
-Please use [releases](https://github.com/navidrome/navidrome/releases) instead of 
-the `master` branch in order to get a stable set of binaries.
+```bash
+mkdir navidrome-data
+# 修改下方 /your/strm/music 为您实际存放 .strm 文件的目录
+docker run -d \
+  --name cloud-navidrome \
+  --restart unless-stopped \
+  -p 4533:4533 \
+  -v /your/strm/music:/music:ro \
+  -v $(pwd)/navidrome-data:/data \
+  liheng6668/cloud-navidrome:latest
+```
 
-## [Check out our Live Demo!](https://www.navidrome.org/demo/)
+或使用 `docker-compose.yml`：
 
-__Any feedback is welcome!__ If you need/want a new feature, find a bug or think of any way to improve Navidrome, 
-please file a [GitHub issue](https://github.com/navidrome/navidrome/issues) or join the discussion in our 
-[Subreddit](https://www.reddit.com/r/navidrome/). If you want to contribute to the project in any other way 
-([ui/backend dev](https://www.navidrome.org/docs/developers/), 
-[translations](https://www.navidrome.org/docs/developers/translations/), 
-[themes](https://www.navidrome.org/docs/developers/creating-themes)), please join the chat in our 
-[Discord server](https://discord.gg/xh7j7yF). 
+```yaml
+services:
+  navidrome:
+    image: liheng6668/cloud-navidrome:latest
+    restart: unless-stopped
+    ports:
+      - "4533:4533"
+    volumes:
+      - /your/strm/music:/music:ro
+      - ./navidrome-data:/data
+```
 
-## Installation
+然后运行：
+```bash
+docker compose up -d
+```
 
-See instructions on the [project's website](https://www.navidrome.org/docs/installation/)
+## 访问 Web 界面
 
-## Cloud Hosting
+打开 `http://服务器IP:4533`，首次访问自动设置管理员账号。
 
-[PikaPods](https://www.pikapods.com) has partnered with us to offer you an 
-[officially supported, cloud-hosted solution](https://www.navidrome.org/docs/installation/managed/#pikapods). 
-A share of the revenue helps fund the development of Navidrome at no additional cost for you.
+## .strm 文件格式
 
-[![PikaPods](https://www.pikapods.com/static/run-button.svg)](https://www.pikapods.com/pods?run=navidrome)
+每个 `.strm` 文件只需一行，内容为云盘媒体的直链 URL：
 
-## Features
- 
- - Handles very **large music collections**
- - Streams virtually **any audio format** available
- - Reads and uses all your beautifully curated **metadata**
- - Great support for **compilations** (Various Artists albums) and **box sets** (multi-disc albums)
- - **Multi-user**, each user has their own play counts, playlists, favourites, etc...
- - Very **low resource usage**
- - **Multi-platform**, runs on macOS, Linux and Windows. **Docker** images are also provided
- - Ready to use binaries for all major platforms, including **Raspberry Pi**
- - Automatically **monitors your library** for changes, importing new files and reloading new metadata 
- - **Themeable**, modern and responsive **Web interface** based on [Material UI](https://material-ui.com)
- - **Compatible** with all Subsonic/Madsonic/Airsonic [clients](https://www.navidrome.org/docs/overview/#apps)
- - **Transcoding** on the fly. Can be set per user/player. **Opus encoding is supported**
- - Translated to **various languages**
+```
+https://your-alist-server.com/dav/Music/Song.mp3?sign=xxxxx
+```
 
-## Translations
+可使用 [AList](https://github.com/alist-org/alist) / [OpenList](https://github.com/OpenListTeam/OpenList) 等工具批量生成。
 
-Navidrome uses [POEditor](https://poeditor.com/) for translations, and we are always looking 
-for [more contributors](https://www.navidrome.org/docs/developers/translations/)
+## 工作原理
 
-<a href="https://poeditor.com/"> 
-<img height="32" src="https://github.com/user-attachments/assets/c19b1d2b-01e1-4682-a007-12356c42147c">
-</a>
+1. **文件扫描**：`.strm` 被识别为音频文件加入库
+2. **元数据**：扫描时对目标 URL 发送 `Range: bytes=0-131071` 请求，用前 128KB 解析 ID3/FLAC 标签
+3. **播放**：点击播放时，服务器读取 `.strm` 中的 URL，返回 `HTTP 302` 重定向给客户端，零带宽消耗
 
-## Documentation
-All documentation can be found in the project's website: https://www.navidrome.org/docs. 
-Here are some useful direct links:
+## 修改的核心文件
 
-- [Overview](https://www.navidrome.org/docs/overview/)
-- [Installation](https://www.navidrome.org/docs/installation/)
-  - [Docker](https://www.navidrome.org/docs/installation/docker/)
-  - [Binaries](https://www.navidrome.org/docs/installation/pre-built-binaries/)
-  - [Build from source](https://www.navidrome.org/docs/installation/build-from-source/)
-- [Development](https://www.navidrome.org/docs/developers/)
-- [Subsonic API Compatibility](https://www.navidrome.org/docs/developers/subsonic-api/)
+| 文件 | 修改内容 |
+| :--- | :--- |
+| `model/file_types.go` | 新增 `.strm` 音频 MIME 白名单 |
+| `adapters/gotaglib/gotaglib.go` | HTTP Range 远端 ID3 标签代理 |
+| `server/subsonic/stream.go` | `.strm` → HTTP 302 重定向逻辑 |
 
-## Screenshots
+## 构建自定义镜像
 
-<p align="left">
-    <img height="550" src="https://raw.githubusercontent.com/navidrome/navidrome/master/.github/screenshots/ss-mobile-login.png">
-    <img height="550" src="https://raw.githubusercontent.com/navidrome/navidrome/master/.github/screenshots/ss-mobile-player.png">
-    <img height="550" src="https://raw.githubusercontent.com/navidrome/navidrome/master/.github/screenshots/ss-mobile-album-view.png">
-    <img width="550" src="https://raw.githubusercontent.com/navidrome/navidrome/master/.github/screenshots/ss-desktop-player.png">
-</p>
+```bash
+git clone https://github.com/liheng-lk/navidrome-strm
+cd navidrome-strm
+docker buildx build -f Dockerfile.strm --platform linux/amd64,linux/arm64 \
+  -t myrepo/cloud-navidrome:latest --push .
+```
+
+## License
+
+基于 [Navidrome](https://github.com/navidrome/navidrome) (GPL-3.0) 分支构建，遵循相同开源协议。
