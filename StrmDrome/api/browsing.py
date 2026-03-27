@@ -12,7 +12,6 @@ router  = APIRouter()
 _M      = ["GET","POST"]
 
 
-def _r(p): return [f"/rest/{p}", f"/rest/{p}.view"]
 
 
 def _fmt_artist(row, albums=None) -> dict:
@@ -69,7 +68,8 @@ def _fmt_song(row, user_id: str = None) -> dict:
 
 # ── getArtists (ID3 mode) ─────────────────────────────────────────────────────
 
-@router.api_route(*_r("getArtists"), methods=_M)
+@router.api_route("/rest/getArtists", methods=_M)
+@router.api_route("/rest/getArtists.view", methods=_M)
 def get_artists(request: Request):
     user, e = require_user(request)
     if e: return e
@@ -85,14 +85,16 @@ def get_artists(request: Request):
 
 # ── getIndexes (legacy folder mode, same as getArtists) ───────────────────────
 
-@router.api_route(*_r("getIndexes"), methods=_M)
+@router.api_route("/rest/getIndexes", methods=_M)
+@router.api_route("/rest/getIndexes.view", methods=_M)
 def get_indexes(request: Request):
     return get_artists(request)
 
 
 # ── getArtist ─────────────────────────────────────────────────────────────────
 
-@router.api_route(*_r("getArtist"), methods=_M)
+@router.api_route("/rest/getArtist", methods=_M)
+@router.api_route("/rest/getArtist.view", methods=_M)
 def get_artist(request: Request, id: str = ""):
     user, e = require_user(request)
     if e: return e
@@ -104,7 +106,8 @@ def get_artist(request: Request, id: str = ""):
 
 # ── getAlbum ──────────────────────────────────────────────────────────────────
 
-@router.api_route(*_r("getAlbum"), methods=_M)
+@router.api_route("/rest/getAlbum", methods=_M)
+@router.api_route("/rest/getAlbum.view", methods=_M)
 def get_album(request: Request, id: str = ""):
     user, e = require_user(request)
     if e: return e
@@ -116,7 +119,8 @@ def get_album(request: Request, id: str = ""):
 
 # ── getSong ───────────────────────────────────────────────────────────────────
 
-@router.api_route(*_r("getSong"), methods=_M)
+@router.api_route("/rest/getSong", methods=_M)
+@router.api_route("/rest/getSong.view", methods=_M)
 def get_song(request: Request, id: str = ""):
     user, e = require_user(request)
     if e: return e
@@ -127,7 +131,8 @@ def get_song(request: Request, id: str = ""):
 
 # ── getMusicDirectory (legacy folder browsing) ────────────────────────────────
 
-@router.api_route(*_r("getMusicDirectory"), methods=_M)
+@router.api_route("/rest/getMusicDirectory", methods=_M)
+@router.api_route("/rest/getMusicDirectory.view", methods=_M)
 def get_music_directory(request: Request, id: str = ""):
     user, e = require_user(request)
     if e: return e
@@ -151,7 +156,8 @@ def get_music_directory(request: Request, id: str = ""):
 
 # ── getGenres ─────────────────────────────────────────────────────────────────
 
-@router.api_route(*_r("getGenres"), methods=_M)
+@router.api_route("/rest/getGenres", methods=_M)
+@router.api_route("/rest/getGenres.view", methods=_M)
 def get_genres(request: Request):
     user, e = require_user(request)
     if e: return e
@@ -163,8 +169,10 @@ def get_genres(request: Request):
 
 # ── getArtistInfo / getArtistInfo2 ────────────────────────────────────────────
 
-@router.api_route(*_r("getArtistInfo"),  methods=_M)
-@router.api_route(*_r("getArtistInfo2"), methods=_M)
+@router.api_route("/rest/getArtistInfo", methods=_M)
+@router.api_route("/rest/getArtistInfo.view", methods=_M)
+@router.api_route("/rest/getArtistInfo2", methods=_M)
+@router.api_route("/rest/getArtistInfo2.view", methods=_M)
 def get_artist_info(request: Request, id: str = "", count: int = 5, includeNotPresent: bool = False):
     user, e = require_user(request)
     if e: return e

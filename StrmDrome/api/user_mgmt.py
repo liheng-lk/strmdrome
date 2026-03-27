@@ -5,7 +5,6 @@ import services.auth as auth_svc
 
 router = APIRouter()
 _M     = ["GET", "POST"]
-def _r(p): return [f"/rest/{p}", f"/rest/{p}.view"]
 
 
 def _fmt_user(row) -> dict:
@@ -29,7 +28,8 @@ def _fmt_user(row) -> dict:
     }
 
 
-@router.api_route(*_r("getUser"), methods=_M)
+@router.api_route("/rest/getUser", methods=_M)
+@router.api_route("/rest/getUser.view", methods=_M)
 def get_user(request: Request, username: str = ""):
     user, e = require_user(request)
     if e: return e
@@ -38,7 +38,8 @@ def get_user(request: Request, username: str = ""):
     return ok({"user": _fmt_user(target)})
 
 
-@router.api_route(*_r("getUsers"), methods=_M)
+@router.api_route("/rest/getUsers", methods=_M)
+@router.api_route("/rest/getUsers.view", methods=_M)
 def get_users(request: Request):
     user, e = require_user(request)
     if e: return e
@@ -47,7 +48,8 @@ def get_users(request: Request):
     return ok({"users": {"user": [_fmt_user(u) for u in users]}})
 
 
-@router.api_route(*_r("createUser"), methods=_M)
+@router.api_route("/rest/createUser", methods=_M)
+@router.api_route("/rest/createUser.view", methods=_M)
 def create_user(request: Request, username: str = "", password: str = "",
                 email: str = "", adminRole: bool = False):
     user, e = require_user(request)
@@ -62,7 +64,8 @@ def create_user(request: Request, username: str = "", password: str = "",
     return ok()
 
 
-@router.api_route(*_r("updateUser"), methods=_M)
+@router.api_route("/rest/updateUser", methods=_M)
+@router.api_route("/rest/updateUser.view", methods=_M)
 def update_user(request: Request, username: str = "", password: str = "",
                 email: str = None, adminRole: bool = None, maxBitRate: int = None):
     user, e = require_user(request)
@@ -78,7 +81,8 @@ def update_user(request: Request, username: str = "", password: str = "",
     return ok()
 
 
-@router.api_route(*_r("deleteUser"), methods=_M)
+@router.api_route("/rest/deleteUser", methods=_M)
+@router.api_route("/rest/deleteUser.view", methods=_M)
 def delete_user(request: Request, username: str = ""):
     user, e = require_user(request)
     if e: return e
@@ -89,7 +93,8 @@ def delete_user(request: Request, username: str = ""):
     return ok()
 
 
-@router.api_route(*_r("changePassword"), methods=_M)
+@router.api_route("/rest/changePassword", methods=_M)
+@router.api_route("/rest/changePassword.view", methods=_M)
 def change_password(request: Request, username: str = "", password: str = ""):
     user, e = require_user(request)
     if e: return e

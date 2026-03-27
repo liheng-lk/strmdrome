@@ -6,12 +6,14 @@ import services.library as lib
 
 router = APIRouter()
 _M     = ["GET", "POST"]
-def _r(p): return [f"/rest/{p}", f"/rest/{p}.view"]
 
 
-@router.api_route(*_r("search"), methods=_M)
-@router.api_route(*_r("search2"), methods=_M)
-@router.api_route(*_r("search3"), methods=_M)
+@router.api_route("/rest/search", methods=_M)
+@router.api_route("/rest/search.view", methods=_M)
+@router.api_route("/rest/search2", methods=_M)
+@router.api_route("/rest/search2.view", methods=_M)
+@router.api_route("/rest/search3", methods=_M)
+@router.api_route("/rest/search3.view", methods=_M)
 def search3(request: Request, query: str = "", artistCount: int = 5,
             albumCount: int = 10, songCount: int = 20,
             artistOffset: int = 0, albumOffset: int = 0, songOffset: int = 0):

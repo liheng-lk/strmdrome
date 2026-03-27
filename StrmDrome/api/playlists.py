@@ -7,7 +7,6 @@ import services.library as lib
 
 router = APIRouter()
 _M     = ["GET", "POST"]
-def _r(p): return [f"/rest/{p}", f"/rest/{p}.view"]
 
 
 def _fmt_playlist(row, song_count: int = None, songs: list = None) -> dict:
@@ -29,7 +28,8 @@ def _fmt_playlist(row, song_count: int = None, songs: list = None) -> dict:
     return pl
 
 
-@router.api_route(*_r("getPlaylists"), methods=_M)
+@router.api_route("/rest/getPlaylists", methods=_M)
+@router.api_route("/rest/getPlaylists.view", methods=_M)
 def get_playlists(request: Request):
     user, e = require_user(request)
     if e: return e
@@ -41,7 +41,8 @@ def get_playlists(request: Request):
     return ok({"playlists": {"playlist": result}})
 
 
-@router.api_route(*_r("getPlaylist"), methods=_M)
+@router.api_route("/rest/getPlaylist", methods=_M)
+@router.api_route("/rest/getPlaylist.view", methods=_M)
 def get_playlist(request: Request, id: str = ""):
     user, e = require_user(request)
     if e: return e
@@ -53,7 +54,8 @@ def get_playlist(request: Request, id: str = ""):
     return ok({"playlist": _fmt_playlist(row, len(songs_fmt), songs_fmt)})
 
 
-@router.api_route(*_r("createPlaylist"), methods=_M)
+@router.api_route("/rest/createPlaylist", methods=_M)
+@router.api_route("/rest/createPlaylist.view", methods=_M)
 def create_playlist(request: Request, name: str = "", playlistId: str = "",
                     songId: list[str] = None):
     user, e = require_user(request)
@@ -68,7 +70,8 @@ def create_playlist(request: Request, name: str = "", playlistId: str = "",
     return ok({"playlist": _fmt_playlist(row, len(songs))})
 
 
-@router.api_route(*_r("updatePlaylist"), methods=_M)
+@router.api_route("/rest/updatePlaylist", methods=_M)
+@router.api_route("/rest/updatePlaylist.view", methods=_M)
 def update_playlist(request: Request, playlistId: str = "", name: str = None,
                     comment: str = None, public: bool = None,
                     songIdToAdd: list[str] = None, songIndexToRemove: list[int] = None):
@@ -87,7 +90,8 @@ def update_playlist(request: Request, playlistId: str = "", name: str = None,
     return ok()
 
 
-@router.api_route(*_r("deletePlaylist"), methods=_M)
+@router.api_route("/rest/deletePlaylist", methods=_M)
+@router.api_route("/rest/deletePlaylist.view", methods=_M)
 def delete_playlist(request: Request, id: str = ""):
     user, e = require_user(request)
     if e: return e

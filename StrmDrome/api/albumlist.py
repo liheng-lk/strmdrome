@@ -7,11 +7,12 @@ import services.library as lib
 
 router = APIRouter()
 _M     = ["GET", "POST"]
-def _r(p): return [f"/rest/{p}", f"/rest/{p}.view"]
 
 
-@router.api_route(*_r("getAlbumList"),  methods=_M)
-@router.api_route(*_r("getAlbumList2"), methods=_M)
+@router.api_route("/rest/getAlbumList", methods=_M)
+@router.api_route("/rest/getAlbumList.view", methods=_M)
+@router.api_route("/rest/getAlbumList2", methods=_M)
+@router.api_route("/rest/getAlbumList2.view", methods=_M)
 def get_album_list(
     request:  Request,
     type:     str = "random",
@@ -31,7 +32,8 @@ def get_album_list(
     return ok({"albumList2": {"album": albums}, "albumList": {"album": albums}})
 
 
-@router.api_route(*_r("getRandomSongs"), methods=_M)
+@router.api_route("/rest/getRandomSongs", methods=_M)
+@router.api_route("/rest/getRandomSongs.view", methods=_M)
 def get_random_songs(request: Request, size: int = 10, genre: str = "",
                      fromYear: int = 0, toYear: int = 0):
     user, e = require_user(request)
@@ -50,7 +52,8 @@ def get_random_songs(request: Request, size: int = 10, genre: str = "",
     return ok({"randomSongs": {"song": [_fmt_song(r, uid) for r in rows]}})
 
 
-@router.api_route(*_r("getSongsByGenre"), methods=_M)
+@router.api_route("/rest/getSongsByGenre", methods=_M)
+@router.api_route("/rest/getSongsByGenre.view", methods=_M)
 def get_songs_by_genre(request: Request, genre: str = "", count: int = 10, offset: int = 0):
     user, e = require_user(request)
     if e: return e
@@ -65,15 +68,18 @@ def get_songs_by_genre(request: Request, genre: str = "", count: int = 10, offse
     return ok({"songsByGenre": {"song": [_fmt_song(r, uid) for r in rows]}})
 
 
-@router.api_route(*_r("getNowPlaying"), methods=_M)
+@router.api_route("/rest/getNowPlaying", methods=_M)
+@router.api_route("/rest/getNowPlaying.view", methods=_M)
 def get_now_playing(request: Request):
     user, e = require_user(request)
     if e: return e
     return ok({"nowPlaying": {"entry": []}})
 
 
-@router.api_route(*_r("getStarred"),  methods=_M)
-@router.api_route(*_r("getStarred2"), methods=_M)
+@router.api_route("/rest/getStarred", methods=_M)
+@router.api_route("/rest/getStarred.view", methods=_M)
+@router.api_route("/rest/getStarred2", methods=_M)
+@router.api_route("/rest/getStarred2.view", methods=_M)
 def get_starred(request: Request):
     user, e = require_user(request)
     if e: return e

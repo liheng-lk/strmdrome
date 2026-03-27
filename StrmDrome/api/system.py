@@ -8,17 +8,17 @@ router = APIRouter()
 _METHODS = ["GET", "POST"]
 
 
-def _route(path):
-    return [f"/rest/{path}", f"/rest/{path}.view"]
 
 
-@router.api_route(*_route("ping"), methods=_METHODS)
+@router.api_route("/rest/ping", methods=_METHODS)
+@router.api_route("/rest/ping.view", methods=_METHODS)
 def ping(request: Request):
     user, e = require_user(request)
     return e or ok()
 
 
-@router.api_route(*_route("getLicense"), methods=_METHODS)
+@router.api_route("/rest/getLicense", methods=_METHODS)
+@router.api_route("/rest/getLicense.view", methods=_METHODS)
 def get_license(request: Request):
     user, e = require_user(request)
     return e or ok({"license": {
@@ -27,13 +27,15 @@ def get_license(request: Request):
     }})
 
 
-@router.api_route(*_route("getMusicFolders"), methods=_METHODS)
+@router.api_route("/rest/getMusicFolders", methods=_METHODS)
+@router.api_route("/rest/getMusicFolders.view", methods=_METHODS)
 def get_music_folders(request: Request):
     user, e = require_user(request)
     return e or ok({"musicFolders": {"musicFolder": [{"id": 1, "name": "Music"}]}})
 
 
-@router.api_route(*_route("getScanStatus"), methods=_METHODS)
+@router.api_route("/rest/getScanStatus", methods=_METHODS)
+@router.api_route("/rest/getScanStatus.view", methods=_METHODS)
 def get_scan_status_endpoint(request: Request):
     user, e = require_user(request)
     if e: return e
@@ -45,7 +47,8 @@ def get_scan_status_endpoint(request: Request):
     }})
 
 
-@router.api_route(*_route("startScan"), methods=_METHODS)
+@router.api_route("/rest/startScan", methods=_METHODS)
+@router.api_route("/rest/startScan.view", methods=_METHODS)
 def start_scan(request: Request):
     user, e = require_user(request)
     if e: return e

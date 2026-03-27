@@ -11,11 +11,12 @@ import asyncio
 
 router = APIRouter()
 _M     = ["GET", "POST"]
-def _r(p): return [f"/rest/{p}", f"/rest/{p}.view"]
 
 
-@router.api_route(*_r("stream"), methods=_M)
-@router.api_route(*_r("download"), methods=_M)
+@router.api_route("/rest/stream", methods=_M)
+@router.api_route("/rest/stream.view", methods=_M)
+@router.api_route("/rest/download", methods=_M)
+@router.api_route("/rest/download.view", methods=_M)
 async def stream(request: Request, id: str = ""):
     user, e = require_user(request)
     if e: return e
@@ -33,7 +34,8 @@ async def stream(request: Request, id: str = ""):
     return RedirectResponse(url=url, status_code=302)
 
 
-@router.api_route(*_r("getCoverArt"), methods=_M)
+@router.api_route("/rest/getCoverArt", methods=_M)
+@router.api_route("/rest/getCoverArt.view", methods=_M)
 def get_cover_art(request: Request, id: str = "", size: int = 0):
     # id can be an album_id or song_id
     conn = __import__("db.database", fromlist=["get_connection"]).get_connection()
@@ -50,7 +52,8 @@ def get_cover_art(request: Request, id: str = "", size: int = 0):
     return Response(content=data, media_type="image/jpeg")
 
 
-@router.api_route(*_r("getLyrics"), methods=_M)
+@router.api_route("/rest/getLyrics", methods=_M)
+@router.api_route("/rest/getLyrics.view", methods=_M)
 def get_lyrics(request: Request, artist: str = "", title: str = "", id: str = ""):
     user, e = require_user(request)
     if e: return e
@@ -74,8 +77,10 @@ def get_lyrics(request: Request, artist: str = "", title: str = "", id: str = ""
     return ok({"lyrics": {"artist": artist, "title": title, "value": plain}})
 
 
-@router.api_route(*_r("getAvatar"), methods=_M)
-@router.api_route(*_r("getAvatar"), methods=_M)
+@router.api_route("/rest/getAvatar", methods=_M)
+@router.api_route("/rest/getAvatar.view", methods=_M)
+@router.api_route("/rest/getAvatar", methods=_M)
+@router.api_route("/rest/getAvatar.view", methods=_M)
 def get_avatar(request: Request, id: str = ""):
     from db.database import get_connection
     conn = get_connection()

@@ -5,10 +5,10 @@ import services.library as lib
 
 router = APIRouter()
 _M     = ["GET", "POST"]
-def _r(p): return [f"/rest/{p}", f"/rest/{p}.view"]
 
 
-@router.api_route(*_r("star"), methods=_M)
+@router.api_route("/rest/star", methods=_M)
+@router.api_route("/rest/star.view", methods=_M)
 def star(request: Request, id: list[str] = None, albumId: list[str] = None,
          artistId: list[str] = None):
     user, e = require_user(request)
@@ -19,7 +19,8 @@ def star(request: Request, id: list[str] = None, albumId: list[str] = None,
     return ok()
 
 
-@router.api_route(*_r("unstar"), methods=_M)
+@router.api_route("/rest/unstar", methods=_M)
+@router.api_route("/rest/unstar.view", methods=_M)
 def unstar(request: Request, id: list[str] = None, albumId: list[str] = None,
            artistId: list[str] = None):
     user, e = require_user(request)
@@ -30,7 +31,8 @@ def unstar(request: Request, id: list[str] = None, albumId: list[str] = None,
     return ok()
 
 
-@router.api_route(*_r("setRating"), methods=_M)
+@router.api_route("/rest/setRating", methods=_M)
+@router.api_route("/rest/setRating.view", methods=_M)
 def set_rating(request: Request, id: str = "", rating: int = 0):
     user, e = require_user(request)
     if e: return e
@@ -38,7 +40,8 @@ def set_rating(request: Request, id: str = "", rating: int = 0):
     return ok()
 
 
-@router.api_route(*_r("scrobble"), methods=_M)
+@router.api_route("/rest/scrobble", methods=_M)
+@router.api_route("/rest/scrobble.view", methods=_M)
 def scrobble(request: Request, id: str = "", submission: bool = True):
     user, e = require_user(request)
     if e: return e
