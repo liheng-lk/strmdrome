@@ -5,6 +5,7 @@ import logging
 import threading
 import uvicorn
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
@@ -70,10 +71,7 @@ from api.router import router as api_router
 app.include_router(api_router)
 
 
-@app.get("/", include_in_schema=False)
-def root():
-    return {"service": "StrmDrome", "version": "2.0.0",
-            "docs": "/docs", "subsonic": "/rest/ping"}
+app.mount("/", StaticFiles(directory="frontend", html=True), name="frontend")
 
 
 if __name__ == "__main__":

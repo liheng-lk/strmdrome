@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StrmDrome Player</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <!-- Vue 3 -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <link rel="stylesheet" href="style.css">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        strm: '#6C63FF',
+                        darkBg: '#0f1115',
+                        panelBg: 'rgba(255, 255, 255, 0.03)'
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-darkBg text-gray-200 overflow-hidden font-sans antialiased selection:bg-strm selection:text-white">
+    <div id="app" class="h-screen flex flex-col" v-cloak>
+        
+        <!-- Login Overlay -->
+        <div v-if="!isLoggedIn" class="fixed inset-0 z-50 flex items-center justify-center bg-darkBg/90 backdrop-blur-xl">
+            <div class="glass-panel w-full max-w-md p-8 rounded-2xl shadow-2xl border border-white/10 animate-fade-in">
+                <div class="text-center mb-8">
+                    <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-strm/20 text-strm mb-4">
+                        <i class="ph-fill ph-music-notes text-3xl"></i>
+                    </div>
+                    <h1 class="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-strm to-purple-400">StrmDrome</h1>
+                    <p class="text-sm text-gray-400 mt-2">Sign in to your streaming server</p>
+                </div>
+                
+                <form @submit.prevent="login" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-400 mb-1">Username</label>
+                        <div class="relative">
+                            <i class="ph ph-user absolute left-3 top-1/2 -translate-y-1/2 text-gray-500"></i>
+                            <input v-model="auth.username" type="text" required class="w-full bg-black/30 border border-white/10 rounded-xl py-3 pl-10 pr-4 focus:ring-2 focus:ring-strm focus:border-transparent outline-none transition-all placeholder-gray-600" placeholder="admin">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-400 mb-1">Password</label>
+                        <div class="relative">
+                            <i class="ph ph-lock absolute left-3 top-1/2 -translate-y-1/2 text-gray-500"></i>
+                            <input v-model="auth.password" type="password" required class="w-full bg-black/30 border border-white/10 rounded-xl py-3 pl-10 pr-4 focus:ring-2 focus:ring-strm focus:border-transparent outline-none transition-all placeholder-gray-600" placeholder="••••••••">
+                        </div>
+                    </div>
+                    
+                    <div v-if="loginError" class="text-red-400 text-sm py-2 px-3 bg-red-400/10 rounded-lg flex items-center gap-2">
+                        <i class="ph ph-warning-circle"></i> {{ loginError }}
+                    </div>
+
+                    <button type="submit" :disabled="isLoggingIn" class="w-full bg-strm hover:bg-strm/80 text-white font-medium py-3 rounded-xl transition-all flex justify-center items-center gap-2 mt-6">
+                        <i v-if="isLoggingIn" class="ph ph-spinner animate-spin"></i>
+                        <span>{{ isLoggingIn ? 'Connecting...' : 'Connect' }}</span>
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Main Layout -->
+        <div class="flex-1 flex overflow-hidden">
+            <!-- Sidebar -->
+            <aside class="w-64 glass-panel border-r border-white/5 flex flex-col relative z-20">
+                <div class="p-6 flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-lg bg-strm text-white flex items-center justify-center">
+                        <i class="ph-bold ph-music-notes text-lg"></i>
+                    </div>
+                    <span class="font-bold text-lg tracking-wide text-gray-100">StrmDrome</span>
+                </div>
+
+                <nav class="flex-1 px-4 space-y-2 overflow-y-auto">
+                    <div class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 mt-4 ml-2">Library</div>
+                    
+                    <a @click="currentView = 'home'" :class="['nav-item', currentView === 'home' ? 'active' : '']">
+                        <i class="ph ph-house text-xl"></i> Home
+                    </a>
+                    <a @click="currentView = 'artists'; fetchArtists()" :class="['nav-item', currentView === 'artists' ? 'active' : '']">
+                        <i class="ph ph-microphone-stage text-xl"></i> Artists
+                    </a>
+                    <a @click="currentView = 'albums'; fetchAlbums()" :class="['nav-item', currentView === 'albums' ? 'active' : '']">
+                        <i class="ph ph-disc text-xl"></i> Albums
+                    </a>
+
+                    <div class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 mt-8 ml-2">Playlists</div>
+                    <div v-if="playlists.length === 0" class="text-sm text-gray-600 ml-2 italic">No playlists</div>
+                    <a v-for="pl in playlists" :key="pl.id" @click="loadPlaylist(pl.id)" class="nav-item">
+                        <i class="ph ph-list-music text-xl text-gray-500"></i> <span class="truncate">{{ pl.name }}</span>
+                    </a>
+                    
+                </nav>
+
+                <!-- User actions -->
+                <div class="p-4 border-t border-white/5">
+                    <a @click="startScan" class="nav-item text-gray-400 hover:text-white cursor-pointer mb-2">
+                        <i class="ph ph-arrows-clockwise text-xl" :class="{'animate-spin text-strm': isScanning}"></i> Rescan Library
+                    </a>
+                    <a @click="logout" class="nav-item text-red-400 hover:bg-red-400/10 hover:text-red-300 cursor-pointer">
+                        <i class="ph ph-sign-out text-xl"></i> Log out
+                    </a>
+                </div>
+            </aside>
+
+            <!-- Main Content Area -->
+            <main class="flex-1 overflow-y-auto relative scroll-smooth p-8 bg-gradient-to-br from-darkBg to-[#0a0c10]">
+                
+                <!-- Home View: Random & Recent -->
+                <div v-if="currentView === 'home'" class="animate-fade-in space-y-12">
+                    <h2 class="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400">Discover</h2>
+                    
+                    <section v-if="randomAlbums.length">
+                        <h3 class="text-xl font-semibold mb-6 flex items-center gap-2">
+                            <i class="ph-fill ph-shuffle text-strm"></i> Random Albums
+                        </h3>
+                        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
+                            <div v-for="album in randomAlbums" :key="album.id" @click="openAlbum(album.id)" class="album-card group cursor-pointer">
+                                <div class="relative aspect-square rounded-xl overflow-hidden mb-3 shadow-lg bg-white/5">
+                                    <img :src="getCoverUrl(album.coverArt)" loading="lazy" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110">
+                                    <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                        <button class="w-12 h-12 bg-strm rounded-full flex items-center justify-center text-white shadow-xl transform translate-y-4 group-hover:translate-y-0 transition-all duration-300">
+                                            <i class="ph-fill ph-play text-xl"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <h4 class="font-medium text-white truncate text-sm" :title="album.name">{{ album.name }}</h4>
+                                <p class="text-xs text-gray-400 truncate mt-1" :title="album.artist">{{ album.artist }}</p>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section v-if="recentAlbums.length">
+                        <h3 class="text-xl font-semibold mb-6 flex items-center gap-2">
+                            <i class="ph-fill ph-clock-counter-clockwise text-blue-400"></i> Recently Added
+                        </h3>
+                        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
+                            <div v-for="album in recentAlbums" :key="album.id" @click="openAlbum(album.id)" class="album-card group cursor-pointer">
+                                <div class="relative aspect-square rounded-xl overflow-hidden mb-3 shadow-lg bg-white/5">
+                                    <img :src="getCoverUrl(album.coverArt)" loading="lazy" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110">
+                                </div>
+                                <h4 class="font-medium text-white truncate text-sm" :title="album.name">{{ album.name }}</h4>
+                                <p class="text-xs text-gray-400 truncate mt-1" :title="album.artist">{{ album.artist }}</p>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+
+                <!-- Artists List -->
+                <div v-if="currentView === 'artists'" class="animate-fade-in max-w-5xl mx-auto">
+                    <h2 class="text-3xl font-bold mb-8">All Artists</h2>
+                    <div class="space-y-8">
+                        <div v-for="idx in artistsIndex" :key="idx.name">
+                            <h3 class="text-xl font-bold text-strm mb-4 pb-2 border-b border-white/10 sticky top-0 bg-darkBg/90 backdrop-blur-md z-10 p-2">{{ idx.name }}</h3>
+                            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
+                                <div v-for="artist in idx.artist" :key="artist.id" @click="openArtist(artist.id)" class="group cursor-pointer text-center">
+                                    <div class="w-full aspect-square rounded-full overflow-hidden mb-3 shadow-lg bg-white/5 border border-white/5">
+                                        <img v-if="artist.artistImageUrl" :src="artist.artistImageUrl" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 rounded-full">
+                                        <div v-else class="w-full h-full flex items-center justify-center bg-gray-800 text-gray-500 group-hover:text-white transition-colors">
+                                            <i class="ph ph-user text-5xl"></i>
+                                        </div>
+                                    </div>
+                                    <h4 class="font-medium text-white text-sm truncate px-2">{{ artist.name }}</h4>
+                                    <p class="text-xs text-gray-500">{{ artist.albumCount }} Album{{artist.albumCount !== 1 ? 's' : ''}}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Album Detail View -->
+                <div v-if="currentView === 'album_detail' && currentAlbum" class="animate-fade-in max-w-5xl mx-auto">
+                    <button @click="currentView = 'home'" class="mb-6 flex items-center gap-2 text-gray-400 hover:text-white transition-colors">
+                        <i class="ph-bold ph-arrow-left"></i> Back
+                    </button>
+                    
+                    <div class="flex flex-col md:flex-row gap-8 mb-10 items-end">
+                        <div class="w-56 h-56 rounded-2xl shadow-2xl overflow-hidden shadow-black/80 flex-shrink-0 group relative">
+                            <img :src="getCoverUrl(currentAlbum.coverArt, 600)" class="w-full h-full object-cover">
+                            <div @click="playAlbum()" class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer">
+                                <i class="ph-fill ph-play-circle text-6xl text-white drop-shadow-lg scale-90 group-hover:scale-100 transition-transform"></i>
+                            </div>
+                        </div>
+                        <div class="flex-1">
+                            <span class="text-xs font-bold tracking-widest text-strm uppercase mb-2 block">Album</span>
+                            <h2 class="text-4xl md:text-5xl font-black text-white mb-2 tracking-tight">{{ currentAlbum.name }}</h2>
+                            <p class="text-xl text-gray-300 font-medium mb-4 cursor-pointer hover:underline" @click="openArtist(currentAlbum.artistId)">{{ currentAlbum.artist }}</p>
+                            <div class="flex items-center gap-4 text-sm text-gray-400">
+                                <span>{{ currentAlbum.year || 'Unknown Year' }}</span>
+                                <span>•</span>
+                                <span>{{ currentAlbum.songCount }} songs</span>
+                                <span v-if="currentAlbum.genre">•</span>
+                                <span>{{ currentAlbum.genre }}</span>
+                            </div>
+                            
+                            <div class="mt-6 flex gap-3">
+                                <button @click="playAlbum()" class="bg-strm hover:bg-strm/80 text-white font-medium px-8 py-3 rounded-full flex items-center gap-2 shadow-lg shadow-strm/20 transition-all hover:scale-105 active:scale-95">
+                                    <i class="ph-fill ph-play text-xl"></i> Play All
+                                </button>
+                                <button class="bg-white/10 hover:bg-white/20 text-white font-medium w-12 h-12 rounded-full flex items-center justify-center transition-colors">
+                                    <i class="ph ph-heart text-xl"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Song List -->
+                    <div class="mt-8 bg-white/5 rounded-2xl border border-white/5 overflow-hidden">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="text-xs uppercase tracking-wider text-gray-500 border-b border-white/5 bg-black/20">
+                                    <th class="py-4 pl-6 pr-4 font-medium w-12 text-center">#</th>
+                                    <th class="py-4 px-4 font-medium">Title</th>
+                                    <th class="py-4 px-4 font-medium hidden md:table-cell">Artist</th>
+                                    <th class="py-4 pl-4 pr-6 font-medium text-right w-24"><i class="ph ph-clock text-lg"></i></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="(song, idx) in currentAlbum.song" :key="song.id" 
+                                    @click="playSong(currentAlbum.song, idx)"
+                                    @contextmenu.prevent="showSongMenu($event, song)"
+                                    class="group cursor-pointer hover:bg-white/10 transition-colors border-b border-white/5 last:border-0"
+                                    :class="{'bg-strm/20 text-strm hover:bg-strm/30': currentSong?.id === song.id}">
+                                    
+                                    <td class="py-3 pl-6 pr-4 text-center">
+                                        <span class="group-hover:hidden text-gray-500" :class="{'text-strm font-bold': currentSong?.id === song.id}">{{ song.track || idx + 1 }}</span>
+                                        <i class="ph-fill ph-play text-strm hidden group-hover:block mx-auto"></i>
+                                    </td>
+                                    
+                                    <td class="py-3 px-4 font-medium group-hover:text-white transition-colors" :class="{'text-white font-bold': currentSong?.id === song.id}">
+                                        {{ song.title }}
+                                        <!-- Animated EQ bars if playing -->
+                                        <div v-if="isPlaying && currentSong?.id === song.id" class="inline-flex items-end gap-[2px] h-3 ml-2">
+                                            <div class="w-1 bg-strm animate-eq-1 h-2/3"></div>
+                                            <div class="w-1 bg-strm animate-eq-2 h-full"></div>
+                                            <div class="w-1 bg-strm animate-eq-3 h-1/2"></div>
+                                        </div>
+                                    </td>
+                                    
+                                    <td class="py-3 px-4 text-sm text-gray-400 hidden md:table-cell">{{ song.artist }}</td>
+                                    <td class="py-3 pl-4 pr-6 text-sm text-gray-500 text-right">{{ formatDuration(song.duration) }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Loader -->
+                <div v-if="isLoading" class="absolute inset-0 flex flex-col items-center justify-center bg-darkBg/50 backdrop-blur-sm z-30">
+                    <div class="w-12 h-12 border-4 border-strm/30 border-t-strm rounded-full animate-spin"></div>
+                    <span class="mt-4 text-gray-400 text-sm tracking-wider animate-pulse">LOADING</span>
+                </div>
+
+            </main>
+        </div>
+
+        <!-- Player Bar Sticky Bottom -->
+        <div class="h-24 bg-[#0a0c10] border-t border-white/10 flex items-center px-6 relative z-30 shadow-[0_-10px_40px_rgba(0,0,0,0.5)]">
+            
+            <!-- Progress Bar Top Edge -->
+            <div class="absolute top-0 left-0 right-0 h-1 bg-gray-800 cursor-pointer group" @click="seek" ref="progressBarContainer">
+                <div class="h-full bg-strm w-0 relative transition-all duration-100 group-hover:h-1.5" :style="{ width: progressPercent + '%' }">
+                    <div class="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 bg-white rounded-full shadow opacity-0 group-hover:opacity-100 transform translate-x-1/2 transition-opacity"></div>
+                </div>
+            </div>
+
+            <!-- Now Playing Info -->
+            <div class="w-1/3 flex items-center gap-4 min-w-0">
+                <template v-if="currentSong">
+                    <div class="w-14 h-14 rounded-md shadow-md overflow-hidden bg-white/10 flex-shrink-0">
+                        <img :src="getCoverUrl(currentSong.coverArt)" class="w-full h-full object-cover">
+                    </div>
+                    <div class="min-w-0">
+                        <h4 class="text-white text-sm font-semibold truncate cursor-pointer hover:underline" @click="openAlbum(currentSong.albumId)">{{ currentSong.title }}</h4>
+                        <p class="text-xs text-gray-400 truncate cursor-pointer hover:underline" @click="openArtist(currentSong.artistId)">{{ currentSong.artist }}</p>
+                    </div>
+                    <button class="ml-2 text-gray-400 hover:text-white transition-colors" @click="toggleStar(currentSong)">
+                        <i class="text-lg" :class="currentSong.starred ? 'ph-fill ph-heart text-strm' : 'ph ph-heart'"></i>
+                    </button>
+                </template>
+                <template v-else>
+                    <div class="w-14 h-14 rounded-md bg-white/5 flex items-center justify-center text-gray-600">
+                        <i class="ph ph-music-notes text-2xl"></i>
+                    </div>
+                    <p class="text-xs text-gray-500 font-medium tracking-wide">IDLE</p>
+                </template>
+            </div>
+
+            <!-- Controls -->
+            <div class="flex-1 flex flex-col items-center justify-center">
+                <div class="flex items-center justify-center gap-6">
+                    <button class="text-gray-400 hover:text-white transition-colors"><i class="ph ph-shuffle text-xl"></i></button>
+                    <button @click="prevSong" class="text-gray-300 hover:text-white transition-colors active:scale-95"><i class="ph-fill ph-skip-back text-2xl"></i></button>
+                    
+                    <button @click="togglePlay" class="w-12 h-12 flex items-center justify-center bg-white rounded-full text-black hover:scale-105 active:scale-95 transition-all shadow-lg hover:shadow-white/20">
+                        <i :class="isPlaying ? 'ph-fill ph-pause' : 'ph-fill ph-play'" class="text-2xl ml-0.5"></i>
+                    </button>
+                    
+                    <button @click="nextSong" class="text-gray-300 hover:text-white transition-colors active:scale-95"><i class="ph-fill ph-skip-forward text-2xl"></i></button>
+                    <button class="text-gray-400 hover:text-white transition-colors"><i class="ph ph-repeat text-xl"></i></button>
+                </div>
+                <!-- Time indicator -->
+                <div class="flex items-center gap-2 mt-1 text-[11px] font-medium text-gray-500 w-full max-w-md justify-between px-4">
+                    <span>{{ formatTime(currentTime) }}</span>
+                    <span>{{ formatTime(duration) }}</span>
+                </div>
+            </div>
+
+            <!-- Volume & Queue -->
+            <div class="w-1/3 flex justify-end items-center gap-4">
+                <div class="flex items-center gap-2 group cursor-pointer w-32" @click="seekVolume" ref="volumeContainer">
+                    <i class="ph ph-speaker-high text-gray-400 group-hover:text-white text-lg"></i>
+                    <div class="h-1.5 flex-1 bg-gray-800 rounded-full overflow-hidden relative">
+                        <div class="absolute inset-y-0 left-0 bg-gray-400 group-hover:bg-white transition-colors" :style="{ width: (volume * 100) + '%' }"></div>
+                    </div>
+                </div>
+                <button class="text-gray-400 hover:text-white"><i class="ph ph-list-dashes text-xl"></i></button>
+            </div>
+            
+        </div>
+        
+        <!-- Hidden Audio Element -->
+        <audio ref="audioPlayer" @timeupdate="onTimeUpdate" @ended="onEnded" @loadedmetadata="onLoadedMetadata" @play="isPlaying=true" @pause="isPlaying=false"></audio>
+    </div>
+
+    <!-- App Logic -->
+    <script src="app.js"></script>
+</body>
+</html>
