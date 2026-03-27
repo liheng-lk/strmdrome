@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   strmdrome:
-    build: .
+    image: liheng6668/strmdrome:latest
     container_name: strmdrome
     restart: unless-stopped
     ports:
@@ -14,20 +14,20 @@ services:
       - ./data:/data
     environment:
       # ── Required ─────────────────────────────────────────────────────────
-      MUSIC_DIR:          /music
-      DATA_DIR:           /data
+      MUSIC_DIR: /music
+      DATA_DIR: /data
       # ── Admin account (change these!) ─────────────────────────────────────
-      ADMIN_USER:         admin
-      ADMIN_PASS:         changeme
+      ADMIN_USER: admin
+      ADMIN_PASS: changeme
       # ── Scraping (optional) ───────────────────────────────────────────────
-      NETEASE_ENABLED:    "true"
-      LASTFM_API_KEY:     ""           # Fill in for artist bios
+      NETEASE_ENABLED: "true"
+      LASTFM_API_KEY: "" # Fill in for artist bios
       # ── Scanner schedule ─────────────────────────────────────────────────
-      SCAN_ON_STARTUP:    "true"
+      SCAN_ON_STARTUP: "true"
       SCAN_INTERVAL_HOURS: "24"
-      SCRAPE_CONCURRENCY: "4"          # Parallel scraping goroutines
+      SCRAPE_CONCURRENCY: "4" # Parallel scraping goroutines
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:4533/"]
+      test: [ "CMD", "curl", "-f", "http://localhost:4533/" ]
       interval: 30s
       timeout: 5s
       retries: 3
