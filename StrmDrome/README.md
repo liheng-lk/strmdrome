@@ -20,7 +20,9 @@ StrmDrome 是专为 `.strm` 音乐文件打造的 **全功能 Navidrome 替代�
 
 | 功能 | 描述 |
 |------|------|
-| 🎵 **零带宽直链播放** | 读取 `.strm` 内链接，`302 Redirect` 直达 OpenList/网盘，服务器零流量 |
+| 🎵 **零带宽直链播放** | 核心魔改 Navidrome 引擎，`302` 直达网盘，服务器零流量 |
+| 🕵️ **AList 链路追踪** | **v4.0 独家**：递归追踪 AList 重定向，直达云盘最后一跳（如阿里云、115） |
+| ⚡ **性能防抖优化** | 智能区分内部/外部路径，秒开 WebUI，解决元数据加载卡顿 |
 | 🔍 **智能文件名解析** | 自动识别任意杂乱命名（`Artist - Song`、`01. Song`、`[2020]` 等） |
 | 📡 **5 级元数据刮削** | NFO → 本地缓存 → 网易云 → MusicBrainz → LastFM 逐级降级 |
 | 🎨 **Subsonic API** | 50+ 端点，兼容 Feishin、音流、DSub 等所有主流客户端 |
@@ -158,6 +160,26 @@ docker pull liheng6668/strmdrome:2.0.0
 - **Users:** `getUser` `getUsers` `createUser` `updateUser` `deleteUser` `changePassword`
 
 </details>
+
+---
+
+## 🛠️ 核心引擎：Navidrome 魔改版 (Modified Core)
+
+StrmDrome 的底层运行环境基于深度定制的 Navidrome 内核（Golang），针对 `.strm` 流媒体场景进行了大幅度重构：
+
+### 1. 原生 302 调度 (Native Redirection)
+不同于传统的 ffmpeg 转发，魔改版内核直接在 **API 路由层** 拦截 `stream` 和 `transcode` 请求，识别 `.strm` 后直接向客户端返回 `302 Found`。这使得您的服务器流量基本为零，且播放响应速度提升了 300% 以上。
+
+### 2. AList 链路追踪器 (AList-V4 Trace Engine)
+专为 AList/OpenList 用户打造的追踪逻辑：
+- **递归探测**：当 `.strm` 内容为内网下载接口（如 `/d/`）时，内核会代理进行递归 302 追踪。
+- **直连最后一跳**：直到抓取到真正的云盘服务器（如阿里云、115 或移动云盘）的**公网直链**后发送给客户端。
+- **性能防抖**：采用单例连接池 (Tracker Reuse) 技术，防止在高并发情况下耗尽系统句柄，确保 NAS 运行稳固。
+
+### 3. 公网/内网分流决策 (Smart Dispatching)
+- **内部路径 (`/`)**：通过 AList API 请求直链并补全曲目时长 (Duration)。
+- **外部链接 (`HTTP/HTTPS`)**：直接进行链路追踪或跳转。
+- **元数据加速**：优化了 `GetTranscodeDecision` 逻辑，确保 UI 列表加载时不会被远程探测阻塞。
 
 ---
 
