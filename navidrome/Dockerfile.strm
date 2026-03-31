@@ -1,0 +1,111 @@
+# Cloud-Navidrome — .strm 原生支持版
+# 4 阶段构建:
+#   Stage 1: 下载 TagLib 静态库
+#   Stage 2: Node.js 构建真正的 Navidrome 前端 UI
+#   Stage 3: Go 编译后端 (含 .strm 三处补丁)
+#   Stage 4: debian:trixie-slim 运行时
+
+ARG BUILDPLATFORM=linux/arm64
+ARG TARGETPLATFORM=linux/amd64
+
+########################################################################################################################
+### Stage 1: 下载对应目标平台的 TagLib 静态库
+FROM --platform=${BUILDPLATFORM} alpine:3.20 AS taglib
+ARG TARGETARCH=amd64
+ARG CROSS_TAGLIB_VERSION=2.2.0-1
+
+RUN apk add --no-cache wget
+RUN case "${TARGETARCH}" in \
+    amd64) PLATFORM="linux-amd64" ;; \
+    arm64) PLATFORM="linux-arm64" ;; \
+    *)     PLATFORM="linux-amd64" ;; \
+    esac && \
+    wget -q "https://github.com/navidrome/cross-taglib/releases/download/v${CROSS_TAGLIB_VERSION}/taglib-${PLATFORM}.tar.gz" -O /tmp/tl.tar.gz && \
+    mkdir /taglib && tar -xzf /tmp/tl.tar.gz -C /taglib
+
+########################################################################################################################
+### Stage 2: 构建 Navidrome React 前端 UI
+FROM --platform=${BUILDPLATFORM} node:22-bookworm-slim AS ui-builder
+WORKDIR /workspace/ui
+
+# 使用淘宝 npm 镜像加速
+RUN npm config set registry https://registry.npmmirror.com
+
+COPY ui/package.json ui/package-lock.json ./
+RUN npm ci --prefer-offline 2>&1 | tail -3
+
+COPY ui/ ./
+RUN npm run build && ls build/
+
+########################################################################################################################
+### Stage 3: 原生下载 Go 模块 (避免 QEMU 无网络)
+FROM --platform=${BUILDPLATFORM} golang:1.25-trixie AS mod-dl
+ENV GOPROXY=https://goproxy.cn,https://goproxy.io,direct
+ENV GOPATH=/go
+WORKDIR /workspace
+COPY go.mod go.sum ./
+RUN go mod download
+
+########################################################################################################################
+### Stage 4: 目标平台 Go 编译 (含 .strm 三处核心补丁)
+FROM --platform=${TARGETPLATFORM} golang:1.25-trixie AS gobuilder
+ARG GIT_SHA=cloud-strm
+ARG GIT_TAG=strm-fork
+
+ENV GOPROXY=https://goproxy.cn,https://goproxy.io,direct
+ENV GOPATH=/go
+ENV CGO_ENABLED=1
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    clang lld pkg-config zlib1g-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /workspace
+
+# 从原生阶段复制预下载的 Go 模块缓存
+COPY --from=mod-dl /go/pkg /go/pkg
+
+COPY . .
+# 复制已编译的前端 UI (覆盖空的 build 目录)
+COPY --from=ui-builder /workspace/ui/build ./ui/build
+
+COPY --from=taglib /taglib /taglib
+ENV PKG_CONFIG_PATH=/taglib/lib/pkgconfig
+ENV CGO_LDFLAGS="-L/taglib/lib -lz"
+
+# 增加缓存破坏者，确保 Go 代码每次都被重新编译
+ARG BUILD_ID=UNKNOWN
+RUN echo "Building version 1.5.2 (Build: ${BUILD_ID})"
+
+RUN go build \
+    -tags=netgo,sqlite_fts5 \
+    -ldflags="-w -s \
+        -X github.com/navidrome/navidrome/consts.gitSha=${GIT_SHA} \
+        -X github.com/navidrome/navidrome/consts.gitTag=${GIT_TAG}" \
+    -o /out/navidrome .
+
+########################################################################################################################
+### Stage 5: 运行时 (debian:trixie-slim — glibc 与构建器一致)
+FROM --platform=${TARGETPLATFORM} debian:trixie-slim AS final
+LABEL org.opencontainers.image.description="Navidrome with native .strm 302 redirect support"
+LABEL maintainer="liheng6668"
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ffmpeg ca-certificates tzdata wget \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=gobuilder /out/navidrome /app/navidrome
+
+VOLUME ["/data", "/music"]
+ENV ND_MUSICFOLDER=/music
+ENV ND_DATAFOLDER=/data
+ENV ND_CONFIGFILE=/data/navidrome.toml
+ENV ND_PORT=4533
+ENV ND_LOGLEVEL=info
+RUN touch /.nddockerenv
+
+EXPOSE 4533
+WORKDIR /app
+HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
+    CMD wget -q -O- http://localhost:4533/ping 2>/dev/null || exit 1
+ENTRYPOINT ["/app/navidrome"]

@@ -4,7 +4,7 @@
 
 ![Version](https://img.shields.io/badge/StrmDrome-v2.0-6C63FF?style=for-the-badge)
 ![Platform](https://img.shields.io/badge/platform-amd64%20%7C%20arm64-lightgrey?style=flat-square)
-[![Docker](https://img.shields.io/badge/docker-hub-2496ED?style=flat-square&logo=docker)](https://hub.docker.com/r/yourusername/strmdrome)
+[![Docker](https://img.shields.io/badge/docker-hub-2496ED?style=flat-square&logo=docker)](https://hub.docker.com/r/liheng6668/strmdrome)
 ![License](https://img.shields.io/badge/license-MIT-blue?style=flat-square)
 
 **一体化 OpenList STRM 音乐流媒体服务器**  
@@ -40,7 +40,7 @@ StrmDrome 是专为 `.strm` 音乐文件打造的 **全功能 Navidrome 替代�
 version: '3.8'
 services:
   strmdrome:
-    image: yourusername/strmdrome:latest
+    image: liheng6668/strmdrome:latest
     container_name: strmdrome
     restart: unless-stopped
     ports:
@@ -62,7 +62,7 @@ docker compose up -d
 ### 本地运行（开发环境）
 
 ```bash
-git clone https://github.com/yourusername/strmdrome
+git clone https://github.com/liheng6668/strmdrome
 cd strmdrome/StrmDrome
 
 pip install -r requirements.txt
@@ -134,10 +134,10 @@ StrmDrome 内置智能解析器，无需手动整理文件：
 
 ```bash
 # 自动选择 amd64 / arm64
-docker pull yourusername/strmdrome:latest
+docker pull liheng6668/strmdrome:latest
 
 # 指定版本
-docker pull yourusername/strmdrome:2.0.0
+docker pull liheng6668/strmdrome:2.0.0
 ```
 
 ---
@@ -158,6 +158,12 @@ docker pull yourusername/strmdrome:2.0.0
 - **Users:** `getUser` `getUsers` `createUser` `updateUser` `deleteUser` `changePassword`
 
 </details>
+
+---
+
+## 🙏 Credits & Acknowledgement
+
+StrmDrome's core music engine is powered by [Navidrome](https://github.com/navidrome/navidrome). This project would not be possible without the incredible foundation laid by the Navidrome team and community.
 
 ---
 

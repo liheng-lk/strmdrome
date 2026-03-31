@@ -1,0 +1,21 @@
+services:
+  navidrome:
+    image: liheng6668/cloud-navidrome:latest
+    container_name: cloud-navidrome
+    restart: unless-stopped
+    ports:
+      - "4533:4533"
+    volumes:
+      # 挂载您的 .strm 文件夹（只读）
+      - /your/strm/music:/music:ro
+      # 数据库、封面缓存等持久化数据
+      - ./navidrome-data:/data
+    environment:
+      ND_MUSICFOLDER: /music
+      ND_DATAFOLDER: /data
+      ND_PORT: 4533
+      ND_LOGLEVEL: info
+      # 元数据扫描并发数（推荐 5-20，.strm 远端抓标签会有网络延迟）
+      ND_SCANNER_EXTRACTORS: taglib
+      # 可选：开启转码支持
+      # ND_TRANSCODINGCACHESIZE: 100MB

@@ -1,0 +1,39 @@
+package core
+
+import (
+	"github.com/google/wire"
+	"github.com/navidrome/navidrome/core/agents"
+	"github.com/navidrome/navidrome/core/external"
+	"github.com/navidrome/navidrome/core/ffmpeg"
+	"github.com/navidrome/navidrome/core/lyrics"
+	"github.com/navidrome/navidrome/core/metrics"
+	"github.com/navidrome/navidrome/core/playback"
+	"github.com/navidrome/navidrome/core/playlists"
+	"github.com/navidrome/navidrome/core/scrobbler"
+	"github.com/navidrome/navidrome/core/stream"
+	"github.com/navidrome/navidrome/core/alist"
+)
+
+var Set = wire.NewSet(
+	stream.NewMediaStreamer,
+	stream.GetTranscodingCache,
+	NewArchiver,
+	NewPlayers,
+	NewShare,
+	playlists.NewPlaylists,
+	NewLibrary,
+	NewUser,
+	NewMaintenance,
+	NewImageUploadService,
+	wire.Bind(new(playlists.ImageUploadService), new(ImageUploadService)),
+	stream.NewTranscodeDecider,
+	agents.GetAgents,
+	external.NewProvider,
+	wire.Bind(new(external.Agents), new(*agents.Agents)),
+	ffmpeg.New,
+	scrobbler.GetPlayTracker,
+	playback.GetInstance,
+	metrics.GetInstance,
+	lyrics.NewLyrics,
+	alist.New,
+)

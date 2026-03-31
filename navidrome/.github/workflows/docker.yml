@@ -1,0 +1,49 @@
+name: Build & Push Cloud-Navidrome
+
+on:
+  push:
+    branches: [ main ]
+    tags: [ 'v*' ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU (for multi-arch)
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Extract version tag
+        id: meta
+        run: |
+          TAG=${GITHUB_REF_NAME:-latest}
+          TAG=${TAG#v}
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+
+      - name: Build and push multi-arch image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile.strm
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            liheng6668/cloud-navidrome:latest
+            liheng6668/cloud-navidrome:${{ steps.meta.outputs.tag }}
+          build-args: |
+            GIT_SHA=${{ github.sha }}
+            GIT_TAG=${{ steps.meta.outputs.tag }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
