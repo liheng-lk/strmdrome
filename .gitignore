@@ -16,9 +16,19 @@ env/
 # StrmDrome runtime data (not part of source code)
 StrmDrome/data/
 data/
+navidrome/data/
 
 # dotenv
 .env
 
 # macOS
 .DS_Store
+
+# IDEs
+.idea/
+.vscode/
+.envrc
+
+# Temporary build logs
+*.txt
+*.log
